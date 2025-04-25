@@ -1,3 +1,21 @@
+/************************************************************************************************
+ ** Transaction Handler
+ **
+ ** A utility for handling blockchain transactions with comprehensive error handling,
+ ** chain switching, and status management.
+ **
+ ** Usage:
+ ** - Use this utility for all contract write operations
+ ** - Handles chain switching automatically
+ ** - Provides transaction status updates
+ ** - Manages success/error toasts
+ **
+ ** Dependencies:
+ ** - @wagmi/core: For contract interactions
+ ** - viem: For error handling and types
+ ** - _utils/tools: For number and transaction utilities
+ ************************************************************************************************/
+
 import {toBigInt} from './tools.numbers';
 import {defaultTxStatus} from './tools.transactions';
 import {
@@ -13,6 +31,18 @@ import {type Address, BaseError, type WalletClient} from 'viem';
 import type {TTxResponse} from './tools.transactions';
 import {assert} from '_utils/helpers';
 
+/************************************************************************************************
+ ** TWriteTransaction
+ **
+ ** Configuration for transaction handling.
+ **
+ ** @property chainID - Target chain ID for the transaction
+ ** @property statusHandler - Optional callback for transaction status updates
+ ** @property shouldDisplaySuccessToast - Whether to show success toast (default: true)
+ ** @property shouldDisplayErrorToast - Whether to show error toast (default: true)
+ ** @property shouldResetStatus - Whether to reset status after completion (default: true)
+ ** @property config - Wagmi configuration object
+ ************************************************************************************************/
 export type TWriteTransaction = {
 	chainID: number;
 	statusHandler?: (status: typeof defaultTxStatus) => void;
@@ -22,6 +52,16 @@ export type TWriteTransaction = {
 	config: Config;
 };
 
+/************************************************************************************************
+ ** TPrepareWriteContractConfig
+ **
+ ** Configuration for contract write preparation.
+ **
+ ** @property chainId - Optional chain ID override
+ ** @property walletClient - Optional wallet client
+ ** @property address - Contract address
+ ** @property confirmation - Number of confirmations to wait for (default: 2)
+ ************************************************************************************************/
 type TPrepareWriteContractConfig = SimulateContractParameters & {
 	chainId?: number;
 	walletClient?: WalletClient;
@@ -29,14 +69,36 @@ type TPrepareWriteContractConfig = SimulateContractParameters & {
 	confirmation?: number;
 };
 
+/************************************************************************************************
+ ** handleTx
+ **
+ ** Main transaction handling function that orchestrates the entire transaction process.
+ **
+ ** @param args - Transaction configuration (TWriteTransaction)
+ ** @param props - Contract write configuration (TPrepareWriteContractConfig)
+ **
+ ** @returns Promise<TTxResponse> with transaction result
+ **
+ ** Process:
+ ** 1. Updates status to pending
+ ** 2. Switches chain if necessary
+ ** 3. Simulates contract call
+ ** 4. Executes transaction
+ ** 5. Waits for confirmations
+ ** 6. Handles success/error states
+ ** 7. Resets status if configured
+ ************************************************************************************************/
 export async function handleTx(args: TWriteTransaction, props: TPrepareWriteContractConfig): Promise<TTxResponse> {
 	const {shouldResetStatus = true, config} = args;
 
 	args.statusHandler?.({...defaultTxStatus, pending: true});
 
-	/*******************************************************************************************
-	 ** First, make sure we are using the correct chainID.
-	 ******************************************************************************************/
+	/************************************************************************************************
+	 ** Chain Switching
+	 **
+	 ** Ensures the correct chain is active before proceeding with the transaction.
+	 ** Handles chain switching errors and updates status accordingly.
+	 ************************************************************************************************/
 	if (config.state.chainId !== args.chainID) {
 		try {
 			await switchChain(config, {chainId: args.chainID});
@@ -51,9 +113,12 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 		}
 	}
 
-	/*******************************************************************************************
-	 ** Prepare the write contract.
-	 ******************************************************************************************/
+	/************************************************************************************************
+	 ** Contract Interaction
+	 **
+	 ** Simulates and executes the contract call.
+	 ** Handles transaction receipt and status updates.
+	 ************************************************************************************************/
 	assert(config.state.chainId === args.chainID, 'ChainID mismatch');
 	try {
 		const simulateContractConfig = await simulateContract(config, {

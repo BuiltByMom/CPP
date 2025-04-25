@@ -1,3 +1,20 @@
+/************************************************************************************************
+ ** Address Tools
+ **
+ ** A comprehensive set of utilities for handling Ethereum addresses.
+ ** Includes functions for address validation, formatting, and ENS resolution.
+ **
+ ** Usage:
+ ** - Use for address validation and normalization
+ ** - Format addresses for display
+ ** - Handle ENS resolution
+ ** - Manage address input states
+ **
+ ** Dependencies:
+ ** - @wagmi/core: For ENS resolution
+ ** - viem: For address utilities
+ ************************************************************************************************/
+
 import {getEnsAddress, getEnsName} from '@wagmi/core';
 import {getAddress, zeroAddress} from 'viem';
 import {mainnet} from 'viem/chains';
@@ -6,42 +23,52 @@ import type {Config} from '@wagmi/core';
 import {assert} from '_utils/helpers';
 
 /************************************************************************************************
- ** TAddressWagmi represents a Wagmi-compatible Ethereum address
+ ** TAddressWagmi
+ **
+ ** Type definition for a Wagmi-compatible Ethereum address.
  ** Always in the format: 0x{40 hex characters}
- ** Used for compatibility with Wagmi library functions
+ ** Used for compatibility with Wagmi library functions.
  ************************************************************************************************/
 type TAddressWagmi = `0x${string}`;
 
 /************************************************************************************************
- ** TAddressSmol represents a Smol-specific Ethereum address format
- ** Enforces strict hex format: 0x followed by exactly 40 hex characters
- ** Used for internal address validation and type safety
+ ** TAddressSmol
+ **
+ ** Type definition for a Smol-specific Ethereum address format.
+ ** Enforces strict hex format: 0x followed by exactly 40 hex characters.
+ ** Used for internal address validation and type safety.
  ************************************************************************************************/
 type TAddressSmol = '/^0x[0-9a-f]{40}$/i';
 
 /************************************************************************************************
- ** TAddressLike represents any address-like value that can be converted to a valid address
- ** Union type of different address formats that can be normalized
- ** Used for flexible address input handling
+ ** TAddressLike
+ **
+ ** Type definition for any address-like value that can be converted to a valid address.
+ ** Union type of different address formats that can be normalized.
+ ** Used for flexible address input handling.
  ************************************************************************************************/
 type TAddressLike = TAddressSmol | TAddressWagmi | string;
 
 /************************************************************************************************
- ** TAddress is the standard address type used throughout the application
- ** Alias for TAddressWagmi to ensure consistent address handling
- ** Used as the canonical address type for all address-related operations
+ ** TAddress
+ **
+ ** The standard address type used throughout the application.
+ ** Alias for TAddressWagmi to ensure consistent address handling.
+ ** Used as the canonical address type for all address-related operations.
  ************************************************************************************************/
 export type TAddress = TAddressWagmi;
 
 /************************************************************************************************
- ** TInputAddressLike represents an address input with validation state and metadata
- ** Used for form inputs and address validation workflows
- ** Contains:
- ** - address: The Ethereum address (optional)
- ** - label: Human readable label for the address
- ** - isValid: Validation state of the address
- ** - source: Origin of the address data
- ** - error: Optional error message for invalid addresses
+ ** TInputAddressLike
+ **
+ ** Type definition for an address input with validation state and metadata.
+ ** Used for form inputs and address validation workflows.
+ **
+ ** @property address - The Ethereum address (optional)
+ ** @property label - Human readable label for the address
+ ** @property isValid - Validation state of the address
+ ** @property source - Origin of the address data
+ ** @property error - Optional error message for invalid addresses
  ************************************************************************************************/
 export type TInputAddressLike = {
 	address?: TAddress;
@@ -52,9 +79,11 @@ export type TInputAddressLike = {
 };
 
 /************************************************************************************************
- ** defaultInputAddressLike provides default values for TInputAddressLike
- ** Used to initialize address input states with safe defaults
- ** Ensures consistent initial state for address input handling
+ ** defaultInputAddressLike
+ **
+ ** Default values for TInputAddressLike.
+ ** Used to initialize address input states with safe defaults.
+ ** Ensures consistent initial state for address input handling.
  ************************************************************************************************/
 export const defaultInputAddressLike: TInputAddressLike = {
 	address: undefined,
@@ -65,14 +94,18 @@ export const defaultInputAddressLike: TInputAddressLike = {
 } as const;
 
 /************************************************************************************************
- ** ethTokenAddress represents the special Ethereum native token address
- ** Used to identify ETH token operations vs ERC20 token operations
- ** Standard convention for representing ETH in token operations
+ ** ethTokenAddress
+ **
+ ** Special Ethereum native token address.
+ ** Used to identify ETH token operations vs ERC20 token operations.
+ ** Standard convention for representing ETH in token operations.
  ************************************************************************************************/
 export const ethTokenAddress = toAddress('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee');
 
 /************************************************************************************************
- ** isTAddress checks if a string is a valid TAddress type
+ ** isTAddress
+ **
+ ** Checks if a string is a valid TAddress type.
  **
  ** @param address - The address string to validate
  ** @returns boolean - True if the address matches TAddress format
@@ -88,7 +121,9 @@ function isTAddress(address?: string | null): address is TAddress {
 }
 
 /************************************************************************************************
- ** isZeroAddress checks if an address is the zero address (0x000...000)
+ ** isZeroAddress
+ **
+ ** Checks if an address is the zero address (0x000...000).
  **
  ** @param address - The address to check
  ** @returns boolean - True if the address is the zero address
@@ -103,7 +138,9 @@ export function isZeroAddress(address?: string): boolean {
 }
 
 /************************************************************************************************
- ** isEthAddress checks if an address is the ETH token address
+ ** isEthAddress
+ **
+ ** Checks if an address is the ETH token address.
  **
  ** @param address - The address to check
  ** @returns boolean - True if the address is the ETH token address
@@ -118,7 +155,9 @@ export function isEthAddress(address?: string | null | TAddress): boolean {
 }
 
 /************************************************************************************************
- ** isAddress checks if a string is a valid Ethereum address
+ ** isAddress
+ **
+ ** Checks if a string is a valid Ethereum address.
  **
  ** @param address - The address string to validate
  ** @returns boolean - True if the address is valid
@@ -136,7 +175,9 @@ export function isAddress(address?: string | null): address is TAddress {
 }
 
 /************************************************************************************************
- ** toAddress converts any address-like value to a standardized TAddress
+ ** toAddress
+ **
+ ** Converts any address-like value to a standardized TAddress.
  **
  ** @param address - The address-like value to convert
  ** @returns TAddress - The normalized address
@@ -158,7 +199,9 @@ export function toAddress(address?: TAddressLike | null): TAddress {
 }
 
 /************************************************************************************************
- ** toSafeAddress formats an address for safe display
+ ** toSafeAddress
+ **
+ ** Formats an address for safe display.
  **
  ** @param props - Object containing address and display options
  ** @returns string - The formatted address string
@@ -193,7 +236,9 @@ export function toSafeAddress(props: {
 }
 
 /************************************************************************************************
- ** toChecksumAddress converts an address to its checksum format
+ ** toChecksumAddress
+ **
+ ** Converts an address to its checksum format.
  **
  ** @param address - The address to convert
  ** @returns TAddressSmol - The checksummed address or zero address if invalid
@@ -221,7 +266,9 @@ function toChecksumAddress(address?: string | null | undefined): TAddressSmol {
 }
 
 /************************************************************************************************
- ** truncateHex truncates a hex string (address) for display
+ ** truncateHex
+ **
+ ** Truncates a hex string (address) for display.
  **
  ** @param address - The address to truncate
  ** @param size - Number of characters to keep on each end
@@ -263,18 +310,15 @@ export function truncateHex(address: string | undefined, size: number): string {
 }
 
 /************************************************************************************************
- ** assertAddress validates that an address meets all requirements
+ ** assertAddress
  **
- ** @param addr - The address to validate
+ ** Type assertion function for addresses.
+ **
+ ** @param addr - The address to assert
  ** @param name - Optional name for error messages
+ ** @throws Error if address is invalid
  **
- ** Validates:
- ** - Address is defined
- ** - Matches TAddress format
- ** - Not zero address
- ** - Not ETH address
- **
- ** Throws detailed errors if validation fails
+ ** Used for runtime address validation
  ************************************************************************************************/
 export function assertAddress(addr: string | TAddress | undefined, name?: string): asserts addr is TAddress {
 	assert(isAddress(addr), `${name || 'Address'} is not set`);
@@ -284,8 +328,12 @@ export function assertAddress(addr: string | TAddress | undefined, name?: string
 }
 
 /************************************************************************************************
- ** TAddressAndEns pairs an Ethereum address with its ENS name
- ** Used for displaying and managing address/ENS pairs
+ ** TAddressAndEns
+ **
+ ** Type definition for an address with its ENS name.
+ **
+ ** @property address - The Ethereum address
+ ** @property label - The ENS name or address
  ************************************************************************************************/
 export type TAddressAndEns = {
 	address: TAddress;
@@ -293,23 +341,19 @@ export type TAddressAndEns = {
 };
 
 /************************************************************************************************
- ** getAddressAndEns resolves an address or ENS name to its canonical form
+ ** getAddressAndEns
  **
- ** @param address - Address or ENS name to resolve
- ** @param chainID - Chain ID for resolution
- ** @param config - Wagmi config object
- ** @returns Promise<TAddressAndEns | undefined> - Resolved address and ENS pair
+ ** Resolves an address to get its ENS name.
+ **
+ ** @param address - The address to resolve
+ ** @param chainID - The chain ID to use for resolution
+ ** @param config - Wagmi configuration
+ ** @returns Promise<TAddressAndEns | undefined> - The resolved address and ENS name
  **
  ** Features:
- ** - Handles both forward and reverse ENS resolution
- ** - Validates addresses
- ** - Returns undefined for invalid inputs
- **
- ** @example
- ** ```typescript
- ** const resolved = await getAddressAndEns("vitalik.eth", 1, wagmiConfig);
- ** // Returns: { address: "0x...", label: "vitalik.eth" }
- ** ```
+ ** - Resolves ENS names
+ ** - Handles resolution errors
+ ** - Returns undefined for invalid addresses
  ************************************************************************************************/
 export async function getAddressAndEns(
 	address: string,

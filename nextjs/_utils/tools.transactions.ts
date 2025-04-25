@@ -1,3 +1,21 @@
+/************************************************************************************************
+ ** Transaction Tools
+ **
+ ** A comprehensive set of utilities for handling blockchain transactions.
+ ** Includes transaction status management, error handling, and a Transaction class
+ ** for building and executing transactions.
+ **
+ ** Usage:
+ ** - Use Transaction class for building and executing transactions
+ ** - Use handleTx for direct transaction handling
+ ** - Use status constants for transaction state management
+ **
+ ** Dependencies:
+ ** - @wagmi/core: For contract interactions
+ ** - viem: For error handling and types
+ ** - _utils/tools: For address and number utilities
+ ************************************************************************************************/
+
 import {assertAddress} from './tools.addresses';
 import {toBigInt} from './tools.numbers';
 import {simulateContract, switchChain, waitForTransactionReceipt, writeContract} from '@wagmi/core';
@@ -10,12 +28,23 @@ import type {TransactionReceipt} from 'viem';
 import type {Connector} from 'wagmi';
 import {assert} from '_utils/helpers';
 
+/************************************************************************************************
+ ** Transaction Status Constants
+ **
+ ** Default status states for transaction management.
+ ** Used to track the current state of a transaction.
+ ************************************************************************************************/
 export const defaultTxStatus = {none: true, pending: false, success: false, error: false, errorMessage: ''};
 const errorTxStatus = {none: false, pending: false, success: false, error: true, errorMessage: ''};
 const pendingTxStatus = {none: false, pending: true, success: false, error: false, errorMessage: ''};
 const successTxStatus = {none: false, pending: false, success: true, error: false, errorMessage: ''};
 const timeout = 3000;
 
+/************************************************************************************************
+ ** Type Definitions
+ **
+ ** Core types for transaction handling and status management.
+ ************************************************************************************************/
 export type TTxStatus = {
 	none: boolean;
 	pending: boolean;
@@ -23,16 +52,30 @@ export type TTxStatus = {
 	error: boolean;
 	errorMessage?: string;
 };
+
 export type TBaseError = {
 	name?: string;
 	message: string;
 };
+
 export type TTxResponse = {
 	isSuccessful: boolean;
 	receipt?: TransactionReceipt;
 	error?: BaseError | unknown;
 };
 
+/************************************************************************************************
+ ** Transaction Class
+ **
+ ** A builder class for creating and executing transactions.
+ ** Provides a fluent interface for transaction configuration and execution.
+ **
+ ** Features:
+ ** - Status management
+ ** - Error handling
+ ** - Success callbacks
+ ** - Transaction argument population
+ ************************************************************************************************/
 export class Transaction {
 	provider: Connector;
 	onStatus: Dispatch<SetStateAction<TTxStatus>>;
@@ -41,6 +84,14 @@ export class Transaction {
 	funcCall: (provider: Connector, ...rest: never[]) => Promise<TTxResponse>;
 	successCall?: (receipt?: TransactionReceipt) => Promise<void>;
 
+	/************************************************************************************************
+	 ** Constructor
+	 **
+	 ** @param provider - The wallet connector to use
+	 ** @param funcCall - The function to call for transaction execution
+	 ** @param onStatus - Status update callback
+	 ** @param options - Optional configuration
+	 ************************************************************************************************/
 	constructor(
 		provider: Connector,
 		funcCall: (provider: Connector, ...rest: never[]) => Promise<TTxResponse>,
@@ -53,21 +104,58 @@ export class Transaction {
 		this.options = options;
 	}
 
+	/************************************************************************************************
+	 ** populate
+	 **
+	 ** Sets the transaction arguments.
+	 **
+	 ** @param txArgs - The arguments to pass to the transaction
+	 ** @returns this for chaining
+	 ************************************************************************************************/
 	populate(...txArgs: unknown[]): Transaction {
 		this.txArgs = txArgs;
 		return this;
 	}
 
+	/************************************************************************************************
+	 ** onSuccess
+	 **
+	 ** Sets the success callback.
+	 **
+	 ** @param onSuccess - Callback to execute on successful transaction
+	 ** @returns this for chaining
+	 ************************************************************************************************/
 	onSuccess(onSuccess: (receipt?: TransactionReceipt) => Promise<void>): Transaction {
 		this.successCall = onSuccess;
 		return this;
 	}
 
+	/************************************************************************************************
+	 ** onHandleError
+	 **
+	 ** Handles transaction errors.
+	 **
+	 ** @param error - The error message
+	 ************************************************************************************************/
 	onHandleError(error: string): void {
 		this.onStatus({...errorTxStatus, errorMessage: error});
 		setTimeout((): void => this.onStatus(defaultTxStatus), timeout);
 	}
 
+	/************************************************************************************************
+	 ** perform
+	 **
+	 ** Executes the transaction.
+	 **
+	 ** @returns Promise<TTxResponse> with transaction result
+	 **
+	 ** Process:
+	 ** 1. Sets status to pending
+	 ** 2. Executes transaction
+	 ** 3. Handles success/error states
+	 ** 4. Calls success callback if configured
+	 ** 5. Resets status after timeout
+	 ************************************************************************************************/
 	async perform(): Promise<TTxResponse> {
 		this.onStatus(pendingTxStatus);
 		try {
@@ -94,6 +182,11 @@ export class Transaction {
 	}
 }
 
+/************************************************************************************************
+ ** Transaction Configuration Types
+ **
+ ** Types for configuring transaction handling.
+ ************************************************************************************************/
 export type TWriteTransaction = {
 	chainID: number;
 	connector: Connector | undefined;
@@ -111,6 +204,26 @@ type TPrepareWriteContractConfig = SimulateContractParameters & {
 	address: TAddress | undefined;
 	confirmation?: number;
 };
+
+/************************************************************************************************
+ ** handleTx
+ **
+ ** Main transaction handling function.
+ **
+ ** @param args - Transaction configuration
+ ** @param props - Contract write configuration
+ **
+ ** @returns Promise<TTxResponse> with transaction result
+ **
+ ** Process:
+ ** 1. Validates configuration
+ ** 2. Switches chain if necessary
+ ** 3. Simulates contract call
+ ** 4. Executes transaction
+ ** 5. Waits for confirmations
+ ** 6. Handles success/error states
+ ** 7. Attempts fallback if configured
+ ************************************************************************************************/
 export async function handleTx(args: TWriteTransaction, props: TPrepareWriteContractConfig): Promise<TTxResponse> {
 	const {config, connector, shouldResetStatus = true} = args;
 	const {address} = props;
@@ -122,9 +235,11 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 
 	args.statusHandler?.({...defaultTxStatus, pending: true});
 
-	/*******************************************************************************************
-	 ** First, make sure we are using the correct chainID.
-	 ******************************************************************************************/
+	/************************************************************************************************
+	 ** Chain Switching
+	 **
+	 ** Ensures the correct chain is active before proceeding.
+	 ************************************************************************************************/
 	const chainID = await connector?.getChainId();
 	if (chainID !== args.chainID) {
 		try {
@@ -140,9 +255,12 @@ export async function handleTx(args: TWriteTransaction, props: TPrepareWriteCont
 		}
 	}
 
-	/*******************************************************************************************
-	 ** Prepare the write contract.
-	 ******************************************************************************************/
+	/************************************************************************************************
+	 ** Contract Interaction
+	 **
+	 ** Simulates and executes the contract call.
+	 ** Handles transaction receipt and status updates.
+	 ************************************************************************************************/
 	assertAddress(props.address, 'contractAddress');
 	assert(chainID === args.chainID, 'ChainID mismatch');
 	try {

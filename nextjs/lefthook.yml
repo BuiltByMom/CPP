@@ -1,0 +1,17 @@
+pre-commit:
+  commands:
+    biomeCheck:
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
+      run: bunx @biomejs/biome check --no-errors-on-unmatched --files-ignore-unknown=true --fix --unsafe *
+    tsCheck:
+      run: tsc --noEmit
+
+
+
+pre-push:
+  commands:
+    biomeCheck:
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
+      run: bunx @biomejs/biome check --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {push_files}
+    tsCheck:
+      run: tsc --noEmit

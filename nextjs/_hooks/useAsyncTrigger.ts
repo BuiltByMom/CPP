@@ -36,7 +36,7 @@ import type {DependencyList} from 'react';
 function useAsyncTrigger(effect: () => Promise<void>, deps: DependencyList): () => Promise<void> {
 	const asyncEffectInCallback = useCallback(async (): Promise<void> => {
 		effect();
-	}, [...deps, effect]);
+	}, [...deps]);
 
 	useEffect((): void => {
 		asyncEffectInCallback();
@@ -68,7 +68,7 @@ function useAsyncTriggerWithArgs(effect: (args?: unknown) => Promise<void>, deps
 		async (...args: unknown[]): Promise<void> => {
 			effect(...args);
 		},
-		[effect, ...deps]
+		[...deps]
 	);
 
 	useEffect((): void => {
